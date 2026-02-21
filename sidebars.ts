@@ -5,12 +5,12 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: 'API Documentation',
+      label: 'API Reference',
       items: ['api-documentation/sample-api'],
     },
     {
       type: 'category',
-      label: 'Markdown Samples',
+      label: 'Support & Onboarding',
       items: ['markdown-samples/getting-started'],
     },
     {

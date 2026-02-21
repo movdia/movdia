@@ -1,212 +1,348 @@
 ---
 sidebar_position: 1
-title: TaskFlow API Reference
-description: Complete REST API documentation for the TaskFlow task management service
+title: CatalogHub API Reference
+description: REST API reference for the CatalogHub data catalog and governance platform
 ---
 
-# TaskFlow API Reference
+# CatalogHub API Reference
 
-**Base URL**: `https://api.taskflow.example.com/v1`
+**Base URL**: `https://api.cataloghub.example.com/v1`
 
-**Version**: 1.0.0
+**Version**: 2.1.0
 
-TaskFlow is a task management API that enables teams to create, organize, and track work items across projects. This reference documents all available endpoints, request/response schemas, and error codes.
+CatalogHub is a cloud data catalog and governance platform for discovering, documenting, and querying enterprise data assets. This reference documents the core API endpoints for managing datasets, searching the catalog, and executing queries programmatically.
 
 ## Authentication
 
-All API requests require authentication via Bearer token in the `Authorization` header.
+All API requests require an OAuth 2.0 bearer token in the `Authorization` header.
 
 ```
-Authorization: Bearer <your-api-token>
+Authorization: Bearer <access_token>
 ```
 
-To obtain an API token, navigate to **Settings > API Tokens** in the TaskFlow dashboard and click **Generate New Token**.
+### Obtaining a Token
+
+Request a token from the OAuth endpoint using client credentials:
+
+```bash
+curl -X POST https://auth.cataloghub.example.com/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "scope=read:catalog write:catalog query:data"
+```
+
+**Response**:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "read:catalog write:catalog query:data"
+}
+```
+
+### Available Scopes
+
+| Scope            | Description                                      |
+|------------------|--------------------------------------------------|
+| `read:catalog`   | Read dataset metadata, schemas, and search results |
+| `write:catalog`  | Create and update datasets, tables, and tags       |
+| `query:data`     | Execute SQL queries against datasets               |
+| `admin`          | Manage users, organizations, and permissions       |
 
 :::caution Token Security
-API tokens grant full access to your account. Store them securely using environment variables or a secrets manager. Never commit tokens to version control.
+Access tokens grant scoped access to your organization's data catalog. Store them in environment variables or a secrets manager. Never commit tokens to version control or include them in client-side code.
 :::
 
 ## Rate Limiting
 
-| Plan       | Requests/minute | Burst limit |
-|------------|-----------------|-------------|
-| Free       | 60              | 10          |
-| Pro        | 300             | 50          |
-| Enterprise | 1000            | 200         |
+| Plan         | Requests/minute | Burst limit |
+|--------------|-----------------|-------------|
+| Community    | 120             | 20          |
+| Professional | 600             | 100         |
+| Enterprise   | 3000            | 500         |
 
 Rate limit status is returned in response headers:
 
 ```
-X-RateLimit-Limit: 300
-X-RateLimit-Remaining: 297
+X-RateLimit-Limit: 600
+X-RateLimit-Remaining: 594
 X-RateLimit-Reset: 1708300800
 ```
 
+When the rate limit is exceeded, the API returns `429 Too Many Requests`. Retry after the number of seconds indicated in the `Retry-After` header.
+
 ---
 
-## Tasks
+## Datasets
 
-### List Tasks
+### Get Dataset
 
-Retrieve a paginated list of tasks in a project.
+Retrieve metadata for a specific dataset.
 
 ```
-GET /projects/{project_id}/tasks
+GET /datasets/{owner}/{dataset_id}
 ```
 
 **Path Parameters**
 
-| Parameter    | Type   | Required | Description              |
-|--------------|--------|----------|--------------------------|
-| `project_id` | string | Yes      | The unique project identifier |
-
-**Query Parameters**
-
-| Parameter | Type    | Default | Description                                    |
-|-----------|---------|---------|------------------------------------------------|
-| `status`  | string  | `all`   | Filter by status: `open`, `in_progress`, `done`, `all` |
-| `assignee`| string  | —       | Filter by assignee user ID                     |
-| `page`    | integer | `1`     | Page number for pagination                     |
-| `limit`   | integer | `20`    | Items per page (max: 100)                      |
-| `sort`    | string  | `created_at` | Sort field: `created_at`, `updated_at`, `priority` |
-| `order`   | string  | `desc`  | Sort order: `asc` or `desc`                    |
+| Parameter    | Type   | Required | Description                          |
+|--------------|--------|----------|--------------------------------------|
+| `owner`      | string | Yes      | Organization or user account handle  |
+| `dataset_id` | string | Yes      | URL-safe dataset identifier          |
 
 **Response** `200 OK`
 
 ```json
 {
-  "data": [
+  "owner": "acme-corp",
+  "id": "quarterly-revenue",
+  "title": "Quarterly Revenue by Region",
+  "description": "Aggregated revenue data broken down by geographic region and product line. Updated monthly from the data warehouse.",
+  "visibility": "organization",
+  "created": "2025-03-10T14:22:00Z",
+  "updated": "2026-02-01T09:15:00Z",
+  "tags": ["finance", "revenue", "quarterly"],
+  "license": "Internal Use Only",
+  "schema": {
+    "tables": [
+      {
+        "name": "revenue_summary",
+        "columns": [
+          { "name": "region", "type": "string", "description": "Geographic region code" },
+          { "name": "product_line", "type": "string", "description": "Product category" },
+          { "name": "quarter", "type": "string", "description": "Fiscal quarter (e.g., Q1-2026)" },
+          { "name": "revenue_usd", "type": "decimal", "description": "Total revenue in USD" }
+        ]
+      }
+    ]
+  },
+  "files_count": 3,
+  "size_bytes": 2458000,
+  "status": "loaded"
+}
+```
+
+### Update Dataset Metadata
+
+Update the title, description, tags, or visibility of a dataset.
+
+```
+PATCH /datasets/{owner}/{dataset_id}
+```
+
+**Request Body**
+
+Include only the fields you want to update. Omitted fields remain unchanged.
+
+```json
+{
+  "title": "Quarterly Revenue by Region (FY2026)",
+  "description": "Updated with Q4 2025 actuals and Q1 2026 projections.",
+  "tags": ["finance", "revenue", "quarterly", "fy2026"],
+  "visibility": "public"
+}
+```
+
+| Field         | Type     | Description                                          |
+|---------------|----------|------------------------------------------------------|
+| `title`       | string   | Human-readable dataset name (max 128 characters)     |
+| `description` | string   | Plain text or Markdown description                   |
+| `tags`        | string[] | Replacement tag list (overwrites existing tags)       |
+| `visibility`  | string   | `private`, `organization`, or `public`               |
+
+**Response** `200 OK` — Returns the full updated dataset object.
+
+:::info Visibility Changes
+Changing visibility from `private` to `public` makes the dataset discoverable by all users. This action is logged in the organization audit trail and requires `write:catalog` scope.
+:::
+
+### Trigger Data Sync
+
+Initiate a sync operation to refresh data from the configured upstream source (database connection, file upload, or linked integration).
+
+```
+POST /datasets/{owner}/{dataset_id}/sync
+```
+
+**Request Body** *(optional)*
+
+```json
+{
+  "mode": "incremental",
+  "notify_on_complete": true
+}
+```
+
+| Field                | Type    | Default       | Description                            |
+|----------------------|---------|---------------|----------------------------------------|
+| `mode`               | string  | `incremental` | `full` (re-import all) or `incremental` |
+| `notify_on_complete` | boolean | `false`       | Send email/webhook when sync finishes  |
+
+**Response** `202 Accepted`
+
+```json
+{
+  "sync_id": "sync_8f3a1b2c",
+  "status": "queued",
+  "estimated_duration_seconds": 45,
+  "dataset": "acme-corp/quarterly-revenue"
+}
+```
+
+Poll sync status via `GET /datasets/{owner}/{dataset_id}/sync/{sync_id}`.
+
+---
+
+## Catalog Search
+
+### Search the Catalog
+
+Search across datasets, tables, and columns using a full-text query with optional filters and facets.
+
+```
+POST /catalog/search
+```
+
+**Request Body**
+
+```json
+{
+  "query": "customer churn",
+  "filters": {
+    "owner": "acme-corp",
+    "tags": ["analytics"],
+    "visibility": "organization"
+  },
+  "facets": ["owner", "tags", "type"],
+  "page": 1,
+  "page_size": 20
+}
+```
+
+| Field       | Type   | Required | Description                                          |
+|-------------|--------|----------|------------------------------------------------------|
+| `query`     | string | Yes      | Full-text search string (supports quoted phrases)    |
+| `filters`   | object | No       | Narrow results by owner, tags, visibility, type      |
+| `facets`    | string[] | No     | Return aggregated counts for specified dimensions    |
+| `page`      | integer | No      | Page number (default: 1)                             |
+| `page_size` | integer | No      | Results per page (default: 20, max: 100)             |
+
+**Response** `200 OK`
+
+```json
+{
+  "total_results": 34,
+  "results": [
     {
-      "id": "task_abc123",
-      "title": "Implement user authentication",
-      "description": "Add JWT-based authentication to the API gateway",
-      "status": "in_progress",
-      "priority": "high",
-      "assignee": {
-        "id": "user_xyz789",
-        "name": "Jane Smith",
-        "email": "jane@example.com"
+      "type": "dataset",
+      "owner": "acme-corp",
+      "id": "customer-churn-analysis",
+      "title": "Customer Churn Analysis",
+      "description": "Monthly churn metrics segmented by subscription tier...",
+      "relevance_score": 0.94,
+      "highlights": {
+        "title": ["<em>Customer</em> <em>Churn</em> Analysis"],
+        "description": ["Monthly <em>churn</em> metrics segmented by..."]
       },
-      "project_id": "proj_def456",
-      "tags": ["backend", "security"],
-      "created_at": "2026-01-15T09:30:00Z",
-      "updated_at": "2026-02-10T14:22:00Z"
+      "tags": ["analytics", "churn", "retention"],
+      "updated": "2026-01-28T11:05:00Z"
     }
   ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 47,
-    "total_pages": 3
-  }
+  "facets": {
+    "owner": [
+      { "value": "acme-corp", "count": 28 },
+      { "value": "data-team", "count": 6 }
+    ],
+    "tags": [
+      { "value": "analytics", "count": 19 },
+      { "value": "finance", "count": 12 }
+    ]
+  },
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 2
 }
 ```
 
-### Create Task
+:::tip Search Syntax
+Use double quotes for exact phrase matching: `"customer lifetime value"`. Prefix a term with `-` to exclude it: `churn -test`. Use `column:` prefix to search column names specifically: `column:email`.
+:::
 
-Create a new task in a project.
+---
+
+## SQL Queries
+
+### Execute SQL Query
+
+Run a SQL query against one or more datasets. CatalogHub supports standard SQL (ANSI SQL:2011) with extensions for cross-dataset joins.
 
 ```
-POST /projects/{project_id}/tasks
+POST /queries/sql
 ```
 
 **Request Body**
 
 ```json
 {
-  "title": "Update deployment documentation",
-  "description": "Revise the deployment guide to include Kubernetes instructions",
-  "priority": "medium",
-  "assignee_id": "user_xyz789",
-  "tags": ["docs", "devops"],
-  "due_date": "2026-03-01T00:00:00Z"
+  "query": "SELECT region, SUM(revenue_usd) AS total_revenue FROM acme_corp.quarterly_revenue.revenue_summary WHERE quarter = 'Q4-2025' GROUP BY region ORDER BY total_revenue DESC LIMIT 10",
+  "include_table_schema": true,
+  "timeout_seconds": 30
 }
 ```
 
-| Field         | Type     | Required | Description                          |
-|---------------|----------|----------|--------------------------------------|
-| `title`       | string   | Yes      | Task title (max 200 characters)      |
-| `description` | string   | No       | Detailed task description (Markdown) |
-| `priority`    | string   | No       | `low`, `medium`, `high`, `critical`. Default: `medium` |
-| `assignee_id` | string   | No       | User ID to assign the task to        |
-| `tags`        | string[] | No       | Array of tag labels                  |
-| `due_date`    | string   | No       | ISO 8601 datetime                    |
+| Field                  | Type    | Required | Description                                      |
+|------------------------|---------|----------|--------------------------------------------------|
+| `query`                | string  | Yes      | SQL query string                                 |
+| `include_table_schema` | boolean | No       | Include column metadata in response (default: false) |
+| `timeout_seconds`      | integer | No       | Query timeout (default: 60, max: 300)            |
 
-**Response** `201 Created`
+**Response** `200 OK`
 
 ```json
 {
-  "data": {
-    "id": "task_new001",
-    "title": "Update deployment documentation",
-    "description": "Revise the deployment guide to include Kubernetes instructions",
-    "status": "open",
-    "priority": "medium",
-    "assignee": {
-      "id": "user_xyz789",
-      "name": "Jane Smith",
-      "email": "jane@example.com"
-    },
-    "project_id": "proj_def456",
-    "tags": ["docs", "devops"],
-    "due_date": "2026-03-01T00:00:00Z",
-    "created_at": "2026-02-21T10:00:00Z",
-    "updated_at": "2026-02-21T10:00:00Z"
-  }
+  "query_id": "qry_e4f2a8bc",
+  "status": "completed",
+  "duration_ms": 1240,
+  "schema": [
+    { "name": "region", "type": "string" },
+    { "name": "total_revenue", "type": "decimal" }
+  ],
+  "rows": [
+    ["North America", 4250000.00],
+    ["Europe", 3180000.00],
+    ["Asia Pacific", 2740000.00],
+    ["Latin America", 890000.00]
+  ],
+  "row_count": 4,
+  "truncated": false
 }
 ```
 
-### Update Task
-
-Update an existing task's fields.
-
-```
-PATCH /projects/{project_id}/tasks/{task_id}
-```
-
-Only include fields you want to update. Omitted fields remain unchanged.
-
-**Request Body**
-
-```json
-{
-  "status": "done",
-  "priority": "high"
-}
-```
-
-**Response** `200 OK` — Returns the full updated task object.
-
-### Delete Task
-
-Permanently delete a task.
-
-```
-DELETE /projects/{project_id}/tasks/{task_id}
-```
-
-**Response** `204 No Content`
-
-:::warning Irreversible Action
-Deleted tasks cannot be recovered. Consider changing the status to `archived` instead if you may need the task later.
+:::caution Query Limits
+Queries that return more than 100,000 rows are automatically truncated. Use `LIMIT` and `OFFSET` for pagination, or export large result sets via `POST /queries/sql/export` to receive a downloadable CSV.
 :::
 
 ---
 
 ## Error Handling
 
-All errors follow a consistent format:
+All errors follow a consistent JSON format:
 
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "The 'title' field is required",
+    "message": "The 'query' field is required",
+    "request_id": "req_7b2f9c1a",
     "details": [
       {
-        "field": "title",
+        "field": "query",
         "issue": "required",
-        "message": "Task title must be provided"
+        "message": "SQL query string must be provided"
       }
     ]
   }
@@ -215,26 +351,44 @@ All errors follow a consistent format:
 
 ### Error Codes
 
-| HTTP Status | Error Code          | Description                                  |
-|-------------|---------------------|----------------------------------------------|
-| `400`       | `VALIDATION_ERROR`  | Request body failed validation               |
-| `401`       | `UNAUTHORIZED`      | Missing or invalid authentication token      |
-| `403`       | `FORBIDDEN`         | Authenticated but lacks required permissions  |
-| `404`       | `NOT_FOUND`         | Requested resource does not exist             |
-| `409`       | `CONFLICT`          | Resource state conflict (e.g., duplicate)     |
-| `429`       | `RATE_LIMITED`       | Too many requests — retry after cooldown      |
-| `500`       | `INTERNAL_ERROR`    | Unexpected server error — contact support     |
+| HTTP Status | Error Code           | Description                                      |
+|-------------|----------------------|--------------------------------------------------|
+| `400`       | `VALIDATION_ERROR`   | Request body or parameters failed validation     |
+| `401`       | `UNAUTHORIZED`       | Missing, expired, or invalid access token        |
+| `403`       | `FORBIDDEN`          | Token lacks required scope or dataset permission |
+| `404`       | `NOT_FOUND`          | Dataset, table, or resource does not exist        |
+| `409`       | `CONFLICT`           | Resource state conflict (e.g., sync already running) |
+| `429`       | `RATE_LIMITED`        | Rate limit exceeded — retry after cooldown       |
+| `500`       | `INTERNAL_ERROR`     | Unexpected server error — contact support        |
 
 ---
 
-## SDKs and Tools
+## SDKs and Client Libraries
 
-| Language   | Package                          | Install                         |
-|------------|----------------------------------|---------------------------------|
-| JavaScript | `@taskflow/sdk`                 | `npm install @taskflow/sdk`     |
-| Python     | `taskflow-python`               | `pip install taskflow-python`   |
-| Go         | `github.com/taskflow/go-client` | `go get github.com/taskflow/go-client` |
+| Language   | Package                          | Install                                  |
+|------------|----------------------------------|------------------------------------------|
+| Python     | `cataloghub`                     | `pip install cataloghub`                 |
+| R          | `cataloghub.r`                   | `install.packages("cataloghub.r")`       |
+| JavaScript | `@cataloghub/sdk`                | `npm install @cataloghub/sdk`            |
+
+### Python Quick Start
+
+```python
+import cataloghub
+
+client = cataloghub.Client(token="YOUR_ACCESS_TOKEN")
+
+# Search the catalog
+results = client.search("customer churn", owner="acme-corp")
+
+# Query a dataset with SQL
+df = client.query(
+    "SELECT * FROM acme_corp.quarterly_revenue.revenue_summary LIMIT 100",
+    as_dataframe=True
+)
+print(df.head())
+```
 
 ---
 
-*This API documentation was written as a portfolio sample to demonstrate REST API documentation skills. TaskFlow is a fictional service.*
+*This API reference was written as a portfolio sample to demonstrate REST API documentation skills. CatalogHub is a fictional platform inspired by real data catalog products.*

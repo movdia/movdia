@@ -1,202 +1,226 @@
 ---
 sidebar_position: 1
-title: Getting Started with Aurora
-description: A step-by-step onboarding guide for new Aurora users
+title: Getting Started with LeadFlow
+description: Step-by-step onboarding guide for new LeadFlow platform users
 ---
 
-# Getting Started with Aurora
+# Getting Started with LeadFlow
 
-This guide walks you through setting up Aurora, a cloud-based analytics platform, from installation to running your first data pipeline. By the end, you will have a working Aurora environment and a completed sample analysis.
+This guide walks you through the initial setup of LeadFlow, a performance marketing platform for routing leads, tracking calls, and analyzing campaign performance. By the end, you will have a configured campaign with call tracking and a connected publisher, ready to receive live traffic.
 
-**Estimated time**: 20 minutes
+**Estimated time**: 15 minutes
+
+**Audience**: New platform users, marketing managers, and account administrators.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following:
+Before you begin, confirm the following:
 
-| Requirement      | Minimum Version | Check Command         |
-|------------------|-----------------|-----------------------|
-| Node.js          | 18.0+           | `node --version`      |
-| npm              | 9.0+            | `npm --version`       |
-| Git              | 2.30+           | `git --version`       |
-| Aurora Account   | Free tier+      | [Sign up](https://aurora.example.com/signup) |
+| Requirement         | Details                                                |
+|---------------------|--------------------------------------------------------|
+| Account credentials | Email and temporary password from your account manager |
+| Browser             | Chrome 90+, Firefox 88+, Safari 15+, or Edge 90+      |
+| Access level        | Admin or Campaign Manager role                         |
+| Tracking numbers    | At least one local or toll-free number provisioned     |
 
-:::info Operating System Support
-Aurora supports macOS 12+, Ubuntu 20.04+, and Windows 10+ (via WSL2). Native Windows support is in beta.
+:::info First-Time Login
+Your account manager sends credentials via email after contract activation. Check your spam folder if you have not received them within 24 hours.
 :::
 
-## Step 1: Install the Aurora CLI
+## Step 1: Log In and Complete Initial Setup
 
-The Aurora CLI is the primary tool for managing pipelines, data sources, and deployments.
+Navigate to `https://app.leadflow.example.com` and sign in with your credentials. You will be prompted to change your password on first login.
 
-```bash
-npm install -g @aurora/cli
-```
+After authentication, complete the initial setup wizard:
 
-Verify the installation:
+1. **Company profile** — Enter your company name, industry vertical, and billing address.
+2. **Timezone** — Select your primary timezone. All reporting timestamps and campaign schedules use this setting.
+3. **Notification preferences** — Choose which alerts you want to receive (lead cap warnings, campaign paused, daily summary) and delivery channels (email, SMS, or in-app).
 
-```bash
-aurora --version
-# Expected output: aurora-cli v3.2.1
-```
+:::tip Timezone Matters
+Lead timestamps, scheduled reports, and campaign day-parting rules all depend on your timezone setting. If your team spans multiple timezones, select the one your reporting stakeholders use.
+:::
 
-If you encounter permission errors on macOS or Linux, see [Troubleshooting: Permission Denied](#troubleshooting).
+Click **Complete Setup** to save. You can update these settings later under **Settings > Company Profile**.
 
-## Step 2: Authenticate
+## Step 2: Configure Your First Campaign
 
-Connect the CLI to your Aurora account:
+Campaigns are the core organizational unit in LeadFlow. Each campaign defines how leads are accepted, scored, routed, and billed.
 
-```bash
-aurora auth login
-```
+1. Navigate to **Campaigns > Create New Campaign**.
+2. Enter a campaign name and select the vertical (e.g., Insurance, Home Services, Education).
+3. Configure lead routing rules:
 
-This opens your default browser for OAuth authentication. After approving access, the CLI stores your credentials securely in your system keychain.
+| Routing Mode    | Description                                                  |
+|-----------------|--------------------------------------------------------------|
+| Round-robin     | Distributes leads equally across all active buyers           |
+| Weighted        | Assigns leads proportionally based on buyer weight (1-100)   |
+| Priority        | Routes to the highest-priority buyer first; falls through on rejection |
+| Ping-post       | Sends anonymized lead data to buyers for real-time bidding   |
 
-**Verify authentication:**
-
-```bash
-aurora auth status
-```
-
-```
-Authenticated as: jane@example.com
-Organization: Acme Corp
-Plan: Pro
-Token expires: 2026-08-21T00:00:00Z
-```
-
-## Step 3: Create Your First Project
-
-Aurora organizes work into **projects**. Each project contains data sources, pipelines, and dashboards.
-
-```bash
-aurora project create my-first-project
-cd my-first-project
-```
-
-This generates the following structure:
+4. Set campaign parameters:
 
 ```
-my-first-project/
-├── aurora.config.yaml    # Project configuration
-├── pipelines/            # Data pipeline definitions
-│   └── example.yaml      # Sample pipeline
-├── sources/              # Data source configurations
-└── outputs/              # Pipeline output schemas
+Bid floor:          $8.00
+Daily lead cap:     500
+Duplicate window:   30 days
+Accepted states:    CA, TX, FL, NY
+Hours of operation: Mon-Fri, 8:00 AM - 8:00 PM (campaign timezone)
 ```
 
-## Step 4: Configure a Data Source
+5. Click **Save and Activate** or **Save as Draft** to finalize later.
 
-Open `sources/sample-data.yaml` and define a data source:
+:::caution Bid Floor and Caps
+Setting the bid floor too high may reduce fill rate. Setting the daily cap too low may cause the campaign to pause before peak traffic hours. Monitor the first 48 hours and adjust based on actual volume.
+:::
 
-```yaml
-# sources/sample-data.yaml
-name: sample-csv
-type: file
-format: csv
-path: ./data/sample.csv
-schema:
-  columns:
-    - name: id
-      type: integer
-      primary_key: true
-    - name: timestamp
-      type: datetime
-    - name: value
-      type: float
-    - name: category
-      type: string
-```
+## Step 3: Set Up Call Tracking
 
-Download the sample dataset:
+LeadFlow tracks inbound calls by assigning unique tracking numbers to each traffic source.
 
-```bash
-aurora data fetch-sample --output ./data/sample.csv
-```
+### Create a Tracking Number Pool
 
-## Step 5: Run the Sample Pipeline
+1. Go to **Call Tracking > Number Pools > Create Pool**.
+2. Select the number type:
+   - **Local** — Area-code-specific numbers for regional campaigns
+   - **Toll-free** — 800/888 numbers for national campaigns
+3. Set the pool size (minimum 5 numbers for web session tracking).
+4. Assign the pool to a campaign.
 
-Execute the pre-configured example pipeline:
+### Configure IVR Flow
 
-```bash
-aurora pipeline run example
-```
+Set up an Interactive Voice Response flow to qualify callers before routing:
+
+1. Navigate to **Call Tracking > IVR Builder**.
+2. Build the flow using drag-and-drop blocks:
 
 ```
-[1/4] Loading data source: sample-csv .......... OK
-[2/4] Validating schema ........................ OK
-[3/4] Running transformations .................. OK
-[4/4] Writing output ........................... OK
-
-Pipeline completed successfully.
-Results: ./outputs/example-results.json
-Duration: 3.2s | Rows processed: 10,000
+Greeting          "Thank you for calling. Press 1 for sales, 2 for support."
+  |
+  +-- [1] Sales
+  |     |
+  |     Filter     Caller state in [CA, TX, FL, NY]?
+  |       |
+  |       +-- Yes --> Route to buyer queue
+  |       +-- No  --> Play message: "We do not service your area."
+  |
+  +-- [2] Support
+        |
+        Route to support queue
 ```
 
-## Step 6: View Results
+3. Enable **call recording** (requires caller consent notice — configurable in IVR settings).
+4. Optionally add a **whisper message** that plays for the agent before connecting: *"Lead from Google Ads, Los Angeles, auto insurance."*
 
-Open the results dashboard in your browser:
+### Verify Your Setup
 
-```bash
-aurora dashboard open
+Dial one of your tracking numbers from a mobile phone. You should hear the IVR greeting and be routed according to your flow. Check **Call Tracking > Recent Calls** to confirm the call was logged with the correct campaign attribution.
+
+## Step 4: Connect a Publisher
+
+Publishers are traffic sources that submit leads to your campaigns.
+
+1. Go to **Publishers > Add Publisher**.
+2. Enter the publisher name and contact email.
+3. LeadFlow generates a unique **posting URL** and **API key**:
+
+```
+POST https://api.leadflow.example.com/leads/submit
+Authorization: Bearer pub_k8f2a9c1...
+
+{
+  "campaign_id": "camp_ins_auto_ca",
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "email": "jane.doe@example.com",
+  "phone": "+14155551234",
+  "state": "CA",
+  "zip": "90210",
+  "insurance_type": "auto",
+  "consent_timestamp": "2026-02-21T10:30:00Z",
+  "consent_text": "I agree to be contacted..."
+}
 ```
 
-Or inspect the raw output:
+4. Set acceptance criteria:
+   - Required fields (first name, last name, phone, state, consent)
+   - Field validation rules (valid phone format, valid state code)
+   - Duplicate check window (e.g., reject if same phone submitted within 30 days)
 
-```bash
-aurora output view example-results --format table
-```
+5. Configure payout rules:
+   - Fixed payout per accepted lead, or
+   - Revenue share based on buyer bid
 
-```
-┌─────┬─────────────┬──────────┬──────────┐
-│ ID  │ Category    │ Avg Val  │ Count    │
-├─────┼─────────────┼──────────┼──────────┤
-│ 1   │ Electronics │ 245.50   │ 3,412    │
-│ 2   │ Clothing    │ 67.30    │ 2,891    │
-│ 3   │ Food        │ 12.80    │ 3,697    │
-└─────┴─────────────┴──────────┴──────────┘
-```
+6. Send the publisher their posting URL, API key, and the field specification document.
 
-## Next Steps
+:::info Testing Before Go-Live
+Enable **Test Mode** on the publisher profile to submit leads without affecting billing or live routing. Test leads appear in **Publishers > Test Logs** with full validation results.
+:::
 
-Now that your environment is set up, explore these resources:
+## Step 5: Review Your Dashboard
 
-- **[Pipeline Configuration Reference](/docs/api-documentation/sample-api)** — Learn advanced pipeline syntax
-- **[Data Source Types](/docs/technical-guides/deployment-guide)** — Connect databases, APIs, and cloud storage
-- **[Scheduling Pipelines](#)** — Automate recurring analysis jobs
+After your campaign receives its first leads, the dashboard populates with real-time metrics.
+
+Navigate to **Dashboard** to view:
+
+| Metric           | Description                                                |
+|------------------|------------------------------------------------------------|
+| Lead volume      | Total leads submitted, accepted, and rejected (today/MTD)  |
+| Conversion rate  | Percentage of submitted leads accepted by buyers           |
+| Revenue          | Total earnings from accepted leads (bid amount * volume)   |
+| Call duration     | Average and total call duration for tracked calls          |
+| Top publishers   | Ranked by volume and acceptance rate                       |
+| Top buyers       | Ranked by fill rate and average bid                        |
+
+**Filters available**: Date range, campaign, publisher, buyer, state, lead status.
+
+**Export**: Click the export icon on any report to download CSV. Scheduled exports (daily/weekly) are configurable under **Reports > Scheduled Exports**.
 
 ## Troubleshooting
 
-### Permission Denied on Install
+### Leads Are Not Routing to Buyers
 
-If `npm install -g` fails with `EACCES`, configure npm to use a different directory:
+**Symptom**: Leads appear as "Accepted" but show "No Buyer Match" in the routing log.
 
-```bash
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
-```
+**Check**:
+1. Verify at least one buyer is active and has available daily cap.
+2. Confirm the buyer's geographic and vertical filters match the incoming lead data.
+3. Check **Campaigns > Routing Logs** for rejection reasons.
 
-### Authentication Fails
+### Call Tracking Number Does Not Ring
 
-If the browser-based login doesn't work, use token-based authentication:
+**Symptom**: Dialing a tracking number results in silence or a fast busy signal.
 
-```bash
-aurora auth login --method token
-# Paste your API token when prompted
-```
+**Check**:
+1. Confirm the number pool is assigned to an active campaign.
+2. Verify the IVR flow has a valid routing destination (not an empty node).
+3. Check **Call Tracking > Number Status** — numbers in "Provisioning" state are not yet active.
 
-Generate an API token at **Settings > API Tokens** in the Aurora dashboard.
+### Dashboard Shows No Data
 
-### Pipeline Fails with Schema Error
+**Symptom**: Dashboard widgets display "No data available" despite active campaigns.
 
-Ensure your data source schema matches the actual data format. Run validation separately:
+**Check**:
+1. Confirm the date range filter includes today.
+2. Verify leads were submitted via the API and not only through Test Mode (test leads do not appear on the main dashboard).
+3. Allow up to 5 minutes for data to propagate to the dashboard after the first lead submission.
 
-```bash
-aurora data validate sources/sample-data.yaml
-```
+### Publisher Posts Are Rejected
+
+**Symptom**: Publisher receives `400 VALIDATION_ERROR` responses.
+
+**Check**:
+1. Review the error response body — it lists which fields failed validation.
+2. Confirm the publisher is sending all required fields.
+3. Verify the `consent_timestamp` is in ISO 8601 format and within the last 90 days.
+4. Check that the API key is active under **Publishers > API Keys**.
+
+## Next Steps
+
+- **[Campaign Optimization Guide](#)** — A/B testing, day-parting, and bid strategy tuning
+- **[Advanced Routing Rules](#)** — Conditional routing, geographic prioritization, and overflow logic
+- **[LeadFlow API Reference](/docs/api-documentation/sample-api)** — Programmatic lead submission, reporting endpoints, and webhook configuration
 
 ---
 
-*This getting-started guide was written as a portfolio sample to demonstrate onboarding documentation skills. Aurora is a fictional platform.*
+*This getting-started guide was written as a portfolio sample to demonstrate onboarding and support documentation skills. LeadFlow is a fictional platform inspired by real performance marketing products.*

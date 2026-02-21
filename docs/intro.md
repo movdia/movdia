@@ -5,30 +5,30 @@ title: Writing Samples
 
 # Writing Samples
 
-Welcome to my documentation portfolio. This section contains real examples of the types of documentation I produce, built directly in Docusaurus to demonstrate both my writing skills and my proficiency with static site generators.
+This section contains documentation samples that demonstrate the types of content I produce professionally. Each sample is built in Docusaurus using MDX, reflecting both writing skill and proficiency with docs-as-code tooling.
 
-## What You'll Find Here
+The samples use fictional product names but are grounded in real domains I have worked in: data catalog APIs, performance marketing platforms, and documentation infrastructure.
 
-Each sample demonstrates a different documentation type commonly needed in software organizations:
+## What You Will Find Here
 
-### API Documentation
+### API Reference Documentation
 
-Complete REST API reference documentation with endpoint descriptions, request/response schemas, authentication details, and error handling guides. This demonstrates the ability to document developer-facing interfaces clearly and thoroughly.
+A REST API reference for a fictional data catalog platform (CatalogHub), demonstrating endpoint documentation with OAuth authentication, request/response schemas, search and SQL query APIs, error handling, and SDK quick-start examples. Inspired by my work documenting data.world's 100+ endpoint API surface.
 
-[View API Documentation](/docs/api-documentation/sample-api)
+[View API Reference](/docs/api-documentation/sample-api)
 
-### Markdown Documentation
+### Support and Onboarding Guide
 
-A getting-started guide showcasing structured onboarding documentation. This demonstrates the ability to take a new user from zero to productive with clear prerequisites, step-by-step instructions, and verification steps.
+A getting-started guide for a fictional performance marketing platform (LeadFlow), demonstrating onboarding documentation with step-by-step campaign setup, call tracking configuration, publisher integration, and troubleshooting. Inspired by my work at Phonexa and AMO writing knowledge base content.
 
 [View Getting Started Guide](/docs/markdown-samples/getting-started)
 
-### Technical Guides
+### Technical Migration Guide
 
-A production deployment guide covering infrastructure, configuration, monitoring, and troubleshooting. This demonstrates the ability to document complex operational procedures for DevOps and engineering teams.
+A documentation platform migration guide covering the end-to-end process of moving API docs from a hosted portal to a docs-as-code workflow. Covers discovery, OpenAPI spec conversion, CI/CD pipeline setup, and cutover planning. Inspired by my work leading the Stoplight-to-ReadMe migration at data.world.
 
-[View Deployment Guide](/docs/technical-guides/deployment-guide)
+[View Migration Guide](/docs/technical-guides/deployment-guide)
 
 ---
 
-All samples are written in MDX and rendered by Docusaurus — the same tools used in production documentation workflows. The source files are available in the [GitHub repository](https://github.com/movdia/movdia/tree/master/docs).
+All samples are written in MDX and rendered by Docusaurus. Source files are available in the [GitHub repository](https://github.com/movdia/movdia/tree/master/docs).

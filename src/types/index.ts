@@ -54,9 +54,11 @@ export interface PortfolioItem {
 }
 
 export type PortfolioCategory =
-  | 'markdown-docs'
   | 'api-docs'
-  | 'writing-sample'
+  | 'developer-docs'
+  | 'support-docs'
+  | 'docops'
+  | 'product-docs'
   | 'technical-guide';
 
 export interface SiteAuthor {

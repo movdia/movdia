@@ -18,19 +18,19 @@ export const contact: ContactInfo = {
 
 export const experience: ExperienceEntry[] = [
   {
-    company: 'SoftServe',
+    company: 'SoftServe (data.world)',
     role: 'Technical Writer',
     period: 'Nov 2023 - Present',
     location: 'Remote',
     description:
-      'Planned and executed a documentation platform migration for a large OpenAPI-based API surface, from discovery and requirements to rollout and adoption.',
+      'Leading documentation efforts for data.world, a cloud data catalog and governance platform. Planned and executed a documentation platform migration (Stoplight to ReadMe) for 100+ API endpoints, and currently developing Word-based legal document templates for the European Patent Office.',
     highlights: [
-      'Developed documentation architecture (information structure, templates, style guidance) for API references, user guides, getting-started tutorials, admin/setup, and troubleshooting/KB content',
-      'Implemented docs-as-code workflow using Git and PR reviews; introduced automated checks and CI steps to keep documentation accurate and consistently published with releases',
-      'Authored and maintained API reference content, how-to guides, and developer onboarding materials; reviewed new/updated endpoints with engineering for correctness',
-      'Created conversion and validation scripts to normalize OpenAPI/YAML sources and eliminate recurring issues during publishing',
-      'Collaborated with PM, Engineering, and UX (SME interviews, spec reviews, change logs) to ensure documentation reflects current product behavior',
-      'Contributed visuals and release materials (annotated screenshots, short demos, release notes) to improve clarity and adoption',
+      'Led evaluation and migration of API documentation from Stoplight to ReadMe, including content migration, URL redirects, and stakeholder alignment',
+      'Upgraded OpenAPI specifications from 2.0 to 3.x; built validation and conversion scripts in Python to normalize specs and eliminate publishing issues',
+      'Implemented docs-as-code workflow using GitHub with PR-based reviews, automated linting, and CI/CD publishing on merge',
+      'Authored and maintained API reference (100+ endpoints across Catalog, Datasets, Search, Query, Webhooks), developer guides, SDK docs, and getting-started tutorials',
+      'Wrote and maintained end-user product documentation (200+ articles) covering data governance, business glossary, catalog management, and AI-powered search',
+      'Developing custom .dotm Word templates for EPO legal patent documents, migrating legal text from legacy formats into structured templates',
     ],
     technologies: [
       'Markdown',
@@ -47,6 +47,7 @@ export const experience: ExperienceEntry[] = [
       'ReadMe',
       'Stoplight',
       'Postman',
+      'Word/VBA',
     ],
   },
   {

@@ -1,316 +1,334 @@
 ---
 sidebar_position: 1
-title: Production Deployment Guide
-description: Step-by-step guide for deploying NovaPlatform to production
+title: Documentation Platform Migration Guide
+description: Step-by-step guide for migrating API documentation from a legacy portal to a docs-as-code workflow
 ---
 
-# Production Deployment Guide
+# Documentation Platform Migration Guide
 
-This guide covers deploying NovaPlatform to a production environment, including infrastructure requirements, configuration, deployment steps, monitoring setup, and rollback procedures.
+This guide covers the end-to-end process of migrating API documentation from a hosted GUI-based documentation portal to a modern docs-as-code workflow using Git, OpenAPI 3.x, and CI/CD-based publishing.
 
-**Audience**: DevOps engineers, SREs, and backend developers with infrastructure access.
+**Audience**: Technical Writers, DocOps Engineers, Engineering Managers, and Developer Relations leads responsible for API documentation infrastructure.
 
-**Last verified**: February 2026 | NovaPlatform v4.2.0
+**Last verified**: February 2026
 
-## Architecture Overview
+## Why Migrate
 
-NovaPlatform runs as a set of containerized services behind a reverse proxy. A typical production deployment includes:
+Hosted documentation portals (GUI-based editors with proprietary storage) serve well for small teams and simple APIs. As the API surface grows, limitations emerge:
 
-```
-                    ┌─────────────┐
-                    │   CDN /     │
-                    │  Load       │
-                    │  Balancer   │
-                    └──────┬──────┘
-                           │
-                    ┌──────┴──────┐
-                    │   Nginx     │
-                    │   Reverse   │
-                    │   Proxy     │
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-        ┌─────┴─────┐ ┌───┴───┐ ┌─────┴─────┐
-        │  API       │ │ Auth  │ │  Worker   │
-        │  Service   │ │ Svc   │ │  Service  │
-        │  (x3)      │ │ (x2)  │ │  (x2)     │
-        └─────┬─────┘ └───┬───┘ └─────┬─────┘
-              │            │            │
-              └────────────┼────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  PostgreSQL │
-                    │  + Redis    │
-                    └─────────────┘
-```
+- **No version control** — Changes are difficult to track, review, or roll back. No audit trail of who changed what.
+- **No review workflow** — Edits publish immediately without peer review, increasing the risk of inaccurate or inconsistent content.
+- **Limited CI/CD integration** — Documentation updates are decoupled from code releases, causing docs to drift from the actual API.
+- **Vendor lock-in** — Content stored in proprietary formats makes migration expensive the longer you wait.
+- **Collaboration friction** — Engineers cannot submit doc fixes through the same PR workflow they use for code.
 
-## Prerequisites
+A docs-as-code approach resolves these by treating documentation as source code: stored in Git, reviewed via pull requests, validated by linters, and published automatically on merge.
 
-### Infrastructure Requirements
-
-| Component      | Minimum Spec           | Recommended            |
-|----------------|------------------------|------------------------|
-| API Nodes      | 2 vCPU, 4GB RAM (x2)  | 4 vCPU, 8GB RAM (x3)  |
-| Database       | 4 vCPU, 16GB RAM      | 8 vCPU, 32GB RAM      |
-| Redis          | 2 vCPU, 4GB RAM       | 4 vCPU, 8GB RAM       |
-| Disk (DB)      | 100GB SSD             | 500GB NVMe            |
-| Network        | 1 Gbps                | 10 Gbps               |
-
-### Required Tools
-
-```bash
-# Verify all tools are installed
-docker --version          # 24.0+
-docker compose version    # 2.20+
-psql --version           # 15+
-redis-cli --version      # 7.0+
-nova-cli --version       # 4.2+
-```
-
-### Access Requirements
-
-- SSH access to all deployment targets
-- Database admin credentials
-- Docker registry pull access
-- DNS management access
-- TLS certificate (or cert-manager configured)
-
-## Pre-deployment Checklist
-
-Complete every item before proceeding with deployment.
-
-- [ ] Database backup completed and verified
-- [ ] New version tested in staging environment
-- [ ] Load testing passed (see Performance Benchmarks)
-- [ ] Rollback plan reviewed with on-call engineer
-- [ ] Maintenance window communicated to stakeholders
-- [ ] Monitoring alerts configured for new version
-- [ ] TLS certificates valid for 30+ days
-
-## Deployment Steps
-
-### Step 1: Pull the Latest Images
-
-```bash
-export NOVA_VERSION=4.2.0
-
-docker pull registry.nova.example.com/api:${NOVA_VERSION}
-docker pull registry.nova.example.com/auth:${NOVA_VERSION}
-docker pull registry.nova.example.com/worker:${NOVA_VERSION}
-```
-
-Verify image signatures:
-
-```bash
-nova-cli verify-image api:${NOVA_VERSION}
-# Output: Signature verified: OK
-```
-
-### Step 2: Run Database Migrations
-
-:::caution Irreversible Migrations
-Review migration files before applying. Some migrations cannot be rolled back automatically. Check `migrations/v4.2.0/` for details.
+:::info When Not to Migrate
+If your API has fewer than 20 endpoints, your team has no Git experience, and your current portal meets all stakeholder needs — the migration cost may not be justified. Evaluate before committing.
 :::
 
+---
+
+## Phase 1: Discovery and Evaluation
+
+### Audit Existing Content
+
+Before planning the migration, catalog everything that needs to move:
+
+| Content Type             | Example                              | Count Method                     |
+|--------------------------|--------------------------------------|----------------------------------|
+| API endpoints            | `GET /datasets/{id}`                | Export OpenAPI spec, count paths  |
+| Guide pages              | "Getting Started", "Authentication" | List all sidebar entries          |
+| Code samples             | cURL, Python, JavaScript            | Search for code blocks            |
+| Embedded media           | Screenshots, architecture diagrams  | List all image references         |
+| Custom pages             | Changelog, status page, landing     | Manual inventory                  |
+
+:::tip Automate the Audit
+Write a script to parse your existing OpenAPI spec and count endpoints, parameters, and response schemas. This gives you a reliable baseline for tracking migration progress.
+:::
+
+### Evaluate Target Platforms
+
+Compare candidate platforms against your requirements:
+
+| Criteria              | Platform A (hosted) | Platform B (docs-as-code) | Platform C (hybrid) |
+|-----------------------|---------------------|---------------------------|----------------------|
+| Git-based source      | No                  | Yes                       | Yes                  |
+| OpenAPI 3.x rendering | Partial             | Full                      | Full                 |
+| PR-based review       | No                  | Yes                       | Yes                  |
+| Custom domain + SSL   | Yes                 | Yes                       | Yes                  |
+| SSO / RBAC            | Enterprise only     | Yes                       | Yes                  |
+| CI/CD publishing      | No                  | GitHub Actions, GitLab CI | GitHub Actions       |
+| Markdown guides       | WYSIWYG only        | Native                    | Native               |
+| Pricing (100+ endpoints) | $$$$             | $$                        | $$$                  |
+
+### Stakeholder Alignment
+
+Schedule a decision review with:
+- **Engineering** — Confirm they will adopt the PR-based doc update workflow
+- **Product Management** — Agree on content ownership and review responsibilities
+- **DevRel / Developer Experience** — Validate that the target platform meets developer expectations
+- **Legal / Compliance** — Confirm URL redirect requirements and data residency constraints
+
+Document the decision and rationale. You will reference this during cutover approval.
+
+---
+
+## Phase 2: OpenAPI Spec Preparation
+
+Most legacy portals use OpenAPI 2.0 (Swagger). Modern platforms expect OpenAPI 3.x. This phase converts and validates your specs.
+
+### Convert OpenAPI 2.0 to 3.x
+
+Use the `swagger2openapi` CLI tool for automated conversion:
+
 ```bash
-# Dry run first
-nova-cli db migrate --version ${NOVA_VERSION} --dry-run
-
-# Apply migrations
-nova-cli db migrate --version ${NOVA_VERSION}
+npx swagger2openapi ./legacy/swagger.json -o ./openapi/v3/api.yaml --yaml
 ```
 
-Expected output:
+Review the output for conversion artifacts:
+- `securityDefinitions` becomes `components/securitySchemes`
+- `produces` / `consumes` become `content` objects on individual responses and request bodies
+- `$ref` paths may need updating if your spec used multi-file references
 
-```
-Applying migration 042_add_audit_log_index ... OK (2.3s)
-Applying migration 043_update_user_schema ... OK (0.8s)
-Migrations complete: 2 applied, 0 skipped, 0 failed
-```
+### Validate and Lint
 
-### Step 3: Update Configuration
+Run Spectral (or your preferred OpenAPI linter) against the converted spec:
 
 ```bash
-# Generate config for the new version
-nova-cli config generate \
-  --env production \
-  --version ${NOVA_VERSION} \
-  --output /etc/nova/config.yaml
+npx @stoplight/spectral-cli lint ./openapi/v3/api.yaml --ruleset .spectral.yaml
 ```
 
-Review critical configuration values:
+Common issues to resolve:
+
+| Issue                          | Fix                                                       |
+|--------------------------------|-----------------------------------------------------------|
+| Missing `description` on params | Add descriptions to every parameter and schema property  |
+| Missing `example` values       | Add realistic examples to request/response schemas        |
+| Unused `$ref` components       | Remove or consolidate orphaned schema definitions         |
+| Inconsistent naming            | Standardize on camelCase or snake_case across all fields   |
+| Missing error responses        | Add `400`, `401`, `403`, `404`, and `500` responses       |
+
+### Normalize Descriptions and Examples
+
+Legacy specs often have inconsistent or missing descriptions. Write a normalization script:
+
+```python
+import yaml
+
+def normalize_spec(spec_path: str) -> None:
+    with open(spec_path) as f:
+        spec = yaml.safe_load(f)
+
+    for path, methods in spec.get("paths", {}).items():
+        for method, operation in methods.items():
+            if isinstance(operation, dict):
+                # Ensure summary exists
+                if "summary" not in operation:
+                    operation["summary"] = f"{method.upper()} {path}"
+
+                # Ensure operationId follows convention
+                if "operationId" not in operation:
+                    clean = path.replace("/", "_").replace("{", "").replace("}", "")
+                    operation["operationId"] = f"{method}{clean}"
+
+    with open(spec_path, "w") as f:
+        yaml.dump(spec, f, default_flow_style=False, sort_keys=False)
+```
+
+:::caution Preserve Existing Content
+Always run normalization scripts on a branch. Review the diff carefully before merging. Automated changes can overwrite intentional formatting choices.
+:::
+
+---
+
+## Phase 3: Content Migration
+
+### Export Guides from the Legacy Platform
+
+Most hosted portals support Markdown or HTML export. Export all non-API-reference content:
+
+1. **Guides and tutorials** — Export as Markdown. Clean up proprietary shortcodes or widgets.
+2. **Changelogs** — Export chronologically. Convert to a standard Markdown changelog format.
+3. **Custom landing pages** — Screenshot for reference, then rebuild in the target platform's format.
+
+### Convert and Clean Content
+
+After export, normalize the Markdown files:
+
+- Replace proprietary callout syntax with the target platform's equivalent (e.g., `> blockquote` to `:::info` admonitions)
+- Fix relative links to match the new URL structure
+- Validate all image paths and copy media assets to the new repository
+- Add frontmatter metadata (title, description, sidebar position, slug)
+
+### Map URL Redirects
+
+Create a redirect map for every page that changes URL. This is critical for SEO and for users who have bookmarked existing pages.
 
 ```yaml
-# /etc/nova/config.yaml (excerpt)
-server:
-  port: 8080
-  workers: 4
-  max_connections: 1000
-
-database:
-  host: db-primary.internal
-  port: 5432
-  pool_size: 20
-  ssl_mode: verify-full
-
-redis:
-  host: redis.internal
-  port: 6379
-  db: 0
-
-security:
-  cors_origins:
-    - https://app.nova.example.com
-  rate_limit: 100/minute
-  session_ttl: 3600
+# redirects.yaml
+redirects:
+  - from: /docs/getting-started
+    to: /docs/guides/getting-started
+    status: 301
+  - from: /docs/authentication
+    to: /docs/guides/authentication
+    status: 301
+  - from: /reference/datasets/list
+    to: /api-reference#tag/Datasets/paths/~1datasets/get
+    status: 301
 ```
 
-### Step 4: Rolling Deployment
-
-Deploy using a rolling strategy to maintain availability:
-
-```bash
-# Deploy API service (3 replicas, one at a time)
-nova-cli deploy api \
-  --version ${NOVA_VERSION} \
-  --strategy rolling \
-  --max-unavailable 1 \
-  --health-check-interval 10s
-
-# Deploy Auth service
-nova-cli deploy auth \
-  --version ${NOVA_VERSION} \
-  --strategy rolling
-
-# Deploy Worker service
-nova-cli deploy worker \
-  --version ${NOVA_VERSION} \
-  --strategy rolling
-```
-
-### Step 5: Verify Deployment
-
-```bash
-# Check service health
-nova-cli status --all
-
-# Expected output:
-# api     v4.2.0  3/3 healthy  uptime: 2m
-# auth    v4.2.0  2/2 healthy  uptime: 1m
-# worker  v4.2.0  2/2 healthy  uptime: 45s
-```
-
-Run the smoke test suite:
-
-```bash
-nova-cli test smoke --env production
-```
-
-```
-Running smoke tests against production...
-  [PASS] Health endpoint responds 200
-  [PASS] Authentication flow completes
-  [PASS] API CRUD operations succeed
-  [PASS] Worker processes queued job
-  [PASS] Metrics endpoint returns data
-
-5/5 tests passed
-```
-
-## Post-deployment Monitoring
-
-### Key Metrics to Watch (First 30 Minutes)
-
-| Metric                | Normal Range      | Alert Threshold |
-|-----------------------|-------------------|-----------------|
-| API response time p95 | < 200ms           | > 500ms         |
-| Error rate            | < 0.1%            | > 1%            |
-| CPU utilization       | 30-60%            | > 85%           |
-| Memory utilization    | 40-70%            | > 90%           |
-| Active connections    | 100-500           | > 900           |
-| Queue depth           | 0-50              | > 200           |
-
-### Dashboard Links
-
-- **Grafana**: `https://monitoring.internal/d/nova-prod`
-- **Alerts**: `https://pagerduty.example.com/services/nova`
-- **Logs**: `https://logs.internal/app/nova-production`
-
-## Rollback Procedure
-
-If critical issues are detected after deployment:
-
-### Immediate Rollback (< 5 minutes)
-
-```bash
-export PREVIOUS_VERSION=4.1.3
-
-# Rollback all services
-nova-cli rollback --version ${PREVIOUS_VERSION} --all
-
-# Verify rollback
-nova-cli status --all
-nova-cli test smoke --env production
-```
-
-### Database Rollback
-
-Only needed if migrations caused data issues:
-
-```bash
-# Restore from pre-deployment backup
-nova-cli db restore --backup pre-deploy-4.2.0
-
-# Verify data integrity
-nova-cli db verify --checks all
-```
-
-:::danger Database Rollback Warning
-Database rollback may cause data loss for records created after migration. Coordinate with the data team before proceeding.
+:::danger Do Not Skip Redirects
+Broken links from search engines, Stack Overflow answers, and partner integrations will erode developer trust. Implement every redirect before cutover.
 :::
-
-## Troubleshooting
-
-### Service Fails to Start
-
-**Symptom**: Container exits immediately after starting.
-
-**Check logs**:
-```bash
-nova-cli logs api --tail 100 --since 5m
-```
-
-**Common causes**:
-1. **Missing environment variable**: Check all required env vars are set in config
-2. **Database connection refused**: Verify network connectivity and credentials
-3. **Port already in use**: Check for orphaned containers from previous deployment
-
-### High Error Rate After Deployment
-
-**Symptom**: Error rate spikes above 1% after deployment.
-
-**Immediate action**:
-1. Check error logs for patterns: `nova-cli logs api --level error --since 10m`
-2. If errors are consistent, initiate rollback
-3. If errors are transient, monitor for 5 more minutes
-
-### Migration Failure
-
-**Symptom**: `nova-cli db migrate` fails mid-execution.
-
-**Recovery**:
-```bash
-# Check migration status
-nova-cli db migrate --status
-
-# Retry failed migration
-nova-cli db migrate --retry-failed
-
-# If retry fails, restore backup and investigate
-nova-cli db restore --backup pre-deploy-4.2.0
-```
 
 ---
 
-*This deployment guide was written as a portfolio sample to demonstrate technical documentation skills for DevOps audiences. NovaPlatform is a fictional service.*
+## Phase 4: CI/CD Pipeline Setup
+
+Automate linting, preview builds, and publishing using GitHub Actions (or your CI platform).
+
+### GitHub Actions Workflow
+
+```yaml
+# .github/workflows/docs.yml
+name: Documentation CI/CD
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'openapi/**'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'openapi/**'
+
+jobs:
+  lint:
+    name: Lint OpenAPI Spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx @stoplight/spectral-cli lint openapi/v3/api.yaml
+
+  preview:
+    name: Build Preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-preview
+          path: build/
+
+  publish:
+    name: Publish to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - name: Sync to documentation platform
+        run: npx rdme docs ./docs --version=2.1
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+```
+
+### What the Pipeline Validates
+
+| Stage   | Trigger       | Checks                                           |
+|---------|---------------|---------------------------------------------------|
+| Lint    | Every PR      | OpenAPI spec validity, description coverage, naming |
+| Preview | PR only       | Full site builds without errors                    |
+| Publish | Merge to main | Builds and syncs to the production docs portal     |
+
+:::tip Add a Link Checker
+Add a link-checking step to the preview job. Tools like `lychee` or `markdown-link-check` catch broken internal and external links before they reach production.
+:::
+
+---
+
+## Phase 5: Validation and Cutover
+
+### Pre-Cutover Checklist
+
+Complete every item before switching DNS or updating the public URL:
+
+- [ ] All API endpoints rendered correctly in the new platform
+- [ ] All guide pages migrated and reviewed by content owners
+- [ ] URL redirects configured and tested (spot-check 10+ URLs)
+- [ ] Search engine indexing verified (sitemap submitted, robots.txt updated)
+- [ ] Custom domain and SSL certificate configured
+- [ ] Analytics tracking code installed (Google Analytics, Plausible, etc.)
+- [ ] CI/CD pipeline passes on a clean branch
+- [ ] Stakeholder sign-off obtained (Engineering, Product, DevRel)
+
+### DNS Cutover
+
+1. Update the DNS CNAME record for `docs.yourcompany.com` to point to the new platform.
+2. Verify SSL certificate issuance (may take up to 15 minutes with Let's Encrypt).
+3. Test the live URL from multiple networks (office, VPN, mobile).
+
+### Visual Regression Check
+
+Compare key pages side-by-side using screenshots:
+- API reference landing page
+- A complex endpoint with nested schemas
+- A guide page with code samples and callouts
+- The search results page
+
+Flag any rendering issues and fix before announcing the migration.
+
+---
+
+## Rollback Plan
+
+If critical issues are discovered post-cutover:
+
+1. **Revert DNS** — Point `docs.yourcompany.com` back to the legacy platform. TTL should be set low (60-300s) before cutover to enable fast rollback.
+2. **Disable CI/CD publishing** — Pause the GitHub Actions workflow to prevent further syncs.
+3. **Communicate** — Notify stakeholders that the migration is paused and the legacy portal is active.
+4. **Investigate** — Triage the issue, fix in a branch, validate in preview, and re-attempt cutover.
+
+:::caution Keep the Legacy Portal Running
+Do not decommission the legacy platform until at least 2 weeks after successful cutover. This gives you a reliable fallback and time to catch issues that only surface with real traffic.
+:::
+
+---
+
+## Post-Migration Checklist
+
+After cutover, complete these follow-up tasks within the first two weeks:
+
+- [ ] Monitor analytics for traffic patterns — compare page views to pre-migration baseline
+- [ ] Review search console for crawl errors or dropped pages
+- [ ] Collect feedback from developers (survey, support tickets, community channels)
+- [ ] Update internal bookmarks, wiki links, and onboarding materials to point to new URLs
+- [ ] Remove legacy platform API keys and service accounts
+- [ ] Archive legacy platform content export as a backup
+- [ ] Schedule a retrospective with the migration team
+- [ ] Document lessons learned for future migrations
+
+---
+
+*This migration guide was written as a portfolio sample to demonstrate technical documentation skills for DocOps and developer infrastructure audiences.*
