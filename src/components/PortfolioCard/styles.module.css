@@ -1,0 +1,92 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--site-color-surface-raised);
+  border: 1px solid var(--site-color-border);
+  border-radius: var(--site-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--site-shadow-sm);
+  transition: transform var(--site-transition-normal),
+    box-shadow var(--site-transition-normal);
+  text-decoration: none;
+  color: var(--ifm-font-color-base);
+  height: 100%;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--site-shadow-lg);
+  text-decoration: none;
+  color: var(--ifm-font-color-base);
+}
+
+.cardHeader {
+  padding: var(--site-spacing-md) var(--site-spacing-md) 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--site-spacing-xs);
+}
+
+.categoryBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 50px;
+  background: var(--ifm-color-primary);
+  color: #ffffff;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.featuredBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 50px;
+  background: var(--site-color-accent);
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.cardBody {
+  padding: var(--site-spacing-sm) var(--site-spacing-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: var(--site-spacing-xs);
+  color: var(--ifm-heading-color);
+}
+
+.cardDescription {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--site-color-text-muted);
+  flex: 1;
+}
+
+.cardFooter {
+  padding: 0 var(--site-spacing-md) var(--site-spacing-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.techPill {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--site-color-surface);
+  color: var(--ifm-color-primary);
+  border-radius: var(--site-radius-sm);
+  font-weight: 500;
+  border: 1px solid var(--site-color-border);
+}

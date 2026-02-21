@@ -1,0 +1,132 @@
+.timeline {
+  position: relative;
+  padding-left: 2.5rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--site-color-border);
+  border-radius: 2px;
+}
+
+.entry {
+  position: relative;
+  margin-bottom: var(--site-spacing-md);
+  padding-bottom: var(--site-spacing-md);
+  border-bottom: 1px solid var(--site-color-border);
+}
+
+.entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.dot {
+  position: absolute;
+  left: -2.75rem;
+  top: 0.25rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+  border: 3px solid var(--site-color-surface-raised);
+  box-shadow: 0 0 0 3px var(--ifm-color-primary);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--site-spacing-xs);
+  margin-bottom: var(--site-spacing-xs);
+}
+
+.role {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ifm-heading-color);
+  margin: 0;
+}
+
+.period {
+  font-size: 0.9rem;
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.company {
+  font-size: 1.05rem;
+  color: var(--site-color-text-muted);
+  margin-bottom: var(--site-spacing-xs);
+}
+
+.description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ifm-font-color-base);
+  margin-bottom: var(--site-spacing-sm);
+}
+
+.highlights {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--site-spacing-sm);
+}
+
+.highlights li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ifm-font-color-base);
+}
+
+.highlights li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+}
+
+.technologies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.techTag {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.65rem;
+  background: var(--site-color-surface);
+  color: var(--ifm-color-primary);
+  border-radius: var(--site-radius-sm);
+  font-weight: 500;
+  border: 1px solid var(--site-color-border);
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .timeline {
+    padding-left: 2rem;
+  }
+
+  .dot {
+    left: -2.25rem;
+  }
+}

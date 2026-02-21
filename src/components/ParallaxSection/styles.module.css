@@ -1,0 +1,27 @@
+.parallaxWrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.parallaxBackground {
+  position: absolute;
+  top: -20%;
+  left: 0;
+  right: 0;
+  bottom: -20%;
+  z-index: 0;
+  will-change: transform;
+}
+
+.parallaxContent {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallaxBackground {
+    top: 0;
+    bottom: 0;
+    transform: none !important;
+  }
+}

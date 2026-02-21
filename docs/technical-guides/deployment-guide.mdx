@@ -1,0 +1,316 @@
+---
+sidebar_position: 1
+title: Production Deployment Guide
+description: Step-by-step guide for deploying NovaPlatform to production
+---
+
+# Production Deployment Guide
+
+This guide covers deploying NovaPlatform to a production environment, including infrastructure requirements, configuration, deployment steps, monitoring setup, and rollback procedures.
+
+**Audience**: DevOps engineers, SREs, and backend developers with infrastructure access.
+
+**Last verified**: February 2026 | NovaPlatform v4.2.0
+
+## Architecture Overview
+
+NovaPlatform runs as a set of containerized services behind a reverse proxy. A typical production deployment includes:
+
+```
+                    ┌─────────────┐
+                    │   CDN /     │
+                    │  Load       │
+                    │  Balancer   │
+                    └──────┬──────┘
+                           │
+                    ┌──────┴──────┐
+                    │   Nginx     │
+                    │   Reverse   │
+                    │   Proxy     │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+        ┌─────┴─────┐ ┌───┴───┐ ┌─────┴─────┐
+        │  API       │ │ Auth  │ │  Worker   │
+        │  Service   │ │ Svc   │ │  Service  │
+        │  (x3)      │ │ (x2)  │ │  (x2)     │
+        └─────┬─────┘ └───┬───┘ └─────┬─────┘
+              │            │            │
+              └────────────┼────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │  PostgreSQL │
+                    │  + Redis    │
+                    └─────────────┘
+```
+
+## Prerequisites
+
+### Infrastructure Requirements
+
+| Component      | Minimum Spec           | Recommended            |
+|----------------|------------------------|------------------------|
+| API Nodes      | 2 vCPU, 4GB RAM (x2)  | 4 vCPU, 8GB RAM (x3)  |
+| Database       | 4 vCPU, 16GB RAM      | 8 vCPU, 32GB RAM      |
+| Redis          | 2 vCPU, 4GB RAM       | 4 vCPU, 8GB RAM       |
+| Disk (DB)      | 100GB SSD             | 500GB NVMe            |
+| Network        | 1 Gbps                | 10 Gbps               |
+
+### Required Tools
+
+```bash
+# Verify all tools are installed
+docker --version          # 24.0+
+docker compose version    # 2.20+
+psql --version           # 15+
+redis-cli --version      # 7.0+
+nova-cli --version       # 4.2+
+```
+
+### Access Requirements
+
+- SSH access to all deployment targets
+- Database admin credentials
+- Docker registry pull access
+- DNS management access
+- TLS certificate (or cert-manager configured)
+
+## Pre-deployment Checklist
+
+Complete every item before proceeding with deployment.
+
+- [ ] Database backup completed and verified
+- [ ] New version tested in staging environment
+- [ ] Load testing passed (see Performance Benchmarks)
+- [ ] Rollback plan reviewed with on-call engineer
+- [ ] Maintenance window communicated to stakeholders
+- [ ] Monitoring alerts configured for new version
+- [ ] TLS certificates valid for 30+ days
+
+## Deployment Steps
+
+### Step 1: Pull the Latest Images
+
+```bash
+export NOVA_VERSION=4.2.0
+
+docker pull registry.nova.example.com/api:${NOVA_VERSION}
+docker pull registry.nova.example.com/auth:${NOVA_VERSION}
+docker pull registry.nova.example.com/worker:${NOVA_VERSION}
+```
+
+Verify image signatures:
+
+```bash
+nova-cli verify-image api:${NOVA_VERSION}
+# Output: Signature verified: OK
+```
+
+### Step 2: Run Database Migrations
+
+:::caution Irreversible Migrations
+Review migration files before applying. Some migrations cannot be rolled back automatically. Check `migrations/v4.2.0/` for details.
+:::
+
+```bash
+# Dry run first
+nova-cli db migrate --version ${NOVA_VERSION} --dry-run
+
+# Apply migrations
+nova-cli db migrate --version ${NOVA_VERSION}
+```
+
+Expected output:
+
+```
+Applying migration 042_add_audit_log_index ... OK (2.3s)
+Applying migration 043_update_user_schema ... OK (0.8s)
+Migrations complete: 2 applied, 0 skipped, 0 failed
+```
+
+### Step 3: Update Configuration
+
+```bash
+# Generate config for the new version
+nova-cli config generate \
+  --env production \
+  --version ${NOVA_VERSION} \
+  --output /etc/nova/config.yaml
+```
+
+Review critical configuration values:
+
+```yaml
+# /etc/nova/config.yaml (excerpt)
+server:
+  port: 8080
+  workers: 4
+  max_connections: 1000
+
+database:
+  host: db-primary.internal
+  port: 5432
+  pool_size: 20
+  ssl_mode: verify-full
+
+redis:
+  host: redis.internal
+  port: 6379
+  db: 0
+
+security:
+  cors_origins:
+    - https://app.nova.example.com
+  rate_limit: 100/minute
+  session_ttl: 3600
+```
+
+### Step 4: Rolling Deployment
+
+Deploy using a rolling strategy to maintain availability:
+
+```bash
+# Deploy API service (3 replicas, one at a time)
+nova-cli deploy api \
+  --version ${NOVA_VERSION} \
+  --strategy rolling \
+  --max-unavailable 1 \
+  --health-check-interval 10s
+
+# Deploy Auth service
+nova-cli deploy auth \
+  --version ${NOVA_VERSION} \
+  --strategy rolling
+
+# Deploy Worker service
+nova-cli deploy worker \
+  --version ${NOVA_VERSION} \
+  --strategy rolling
+```
+
+### Step 5: Verify Deployment
+
+```bash
+# Check service health
+nova-cli status --all
+
+# Expected output:
+# api     v4.2.0  3/3 healthy  uptime: 2m
+# auth    v4.2.0  2/2 healthy  uptime: 1m
+# worker  v4.2.0  2/2 healthy  uptime: 45s
+```
+
+Run the smoke test suite:
+
+```bash
+nova-cli test smoke --env production
+```
+
+```
+Running smoke tests against production...
+  [PASS] Health endpoint responds 200
+  [PASS] Authentication flow completes
+  [PASS] API CRUD operations succeed
+  [PASS] Worker processes queued job
+  [PASS] Metrics endpoint returns data
+
+5/5 tests passed
+```
+
+## Post-deployment Monitoring
+
+### Key Metrics to Watch (First 30 Minutes)
+
+| Metric                | Normal Range      | Alert Threshold |
+|-----------------------|-------------------|-----------------|
+| API response time p95 | < 200ms           | > 500ms         |
+| Error rate            | < 0.1%            | > 1%            |
+| CPU utilization       | 30-60%            | > 85%           |
+| Memory utilization    | 40-70%            | > 90%           |
+| Active connections    | 100-500           | > 900           |
+| Queue depth           | 0-50              | > 200           |
+
+### Dashboard Links
+
+- **Grafana**: `https://monitoring.internal/d/nova-prod`
+- **Alerts**: `https://pagerduty.example.com/services/nova`
+- **Logs**: `https://logs.internal/app/nova-production`
+
+## Rollback Procedure
+
+If critical issues are detected after deployment:
+
+### Immediate Rollback (< 5 minutes)
+
+```bash
+export PREVIOUS_VERSION=4.1.3
+
+# Rollback all services
+nova-cli rollback --version ${PREVIOUS_VERSION} --all
+
+# Verify rollback
+nova-cli status --all
+nova-cli test smoke --env production
+```
+
+### Database Rollback
+
+Only needed if migrations caused data issues:
+
+```bash
+# Restore from pre-deployment backup
+nova-cli db restore --backup pre-deploy-4.2.0
+
+# Verify data integrity
+nova-cli db verify --checks all
+```
+
+:::danger Database Rollback Warning
+Database rollback may cause data loss for records created after migration. Coordinate with the data team before proceeding.
+:::
+
+## Troubleshooting
+
+### Service Fails to Start
+
+**Symptom**: Container exits immediately after starting.
+
+**Check logs**:
+```bash
+nova-cli logs api --tail 100 --since 5m
+```
+
+**Common causes**:
+1. **Missing environment variable**: Check all required env vars are set in config
+2. **Database connection refused**: Verify network connectivity and credentials
+3. **Port already in use**: Check for orphaned containers from previous deployment
+
+### High Error Rate After Deployment
+
+**Symptom**: Error rate spikes above 1% after deployment.
+
+**Immediate action**:
+1. Check error logs for patterns: `nova-cli logs api --level error --since 10m`
+2. If errors are consistent, initiate rollback
+3. If errors are transient, monitor for 5 more minutes
+
+### Migration Failure
+
+**Symptom**: `nova-cli db migrate` fails mid-execution.
+
+**Recovery**:
+```bash
+# Check migration status
+nova-cli db migrate --status
+
+# Retry failed migration
+nova-cli db migrate --retry-failed
+
+# If retry fails, restore backup and investigate
+nova-cli db restore --backup pre-deploy-4.2.0
+```
+
+---
+
+*This deployment guide was written as a portfolio sample to demonstrate technical documentation skills for DevOps audiences. NovaPlatform is a fictional service.*

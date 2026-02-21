@@ -1,0 +1,21 @@
+/*
+  Security headers for platforms that support _headers files
+  (Cloudflare Pages, Netlify, etc.)
+
+  Note: GitHub Pages does not support custom HTTP headers natively.
+  These are included to demonstrate knowledge and for future portability.
+  The site uses meta-tag equivalents via a custom Docusaurus plugin for
+  security policies that can be expressed as meta tags.
+
+  For full HTTP-level security headers, consider deploying behind
+  Cloudflare (free tier) or using a platform that supports _headers.
+*/
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload

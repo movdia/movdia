@@ -1,0 +1,31 @@
+.heading {
+  text-align: center;
+  margin-bottom: var(--site-spacing-lg);
+}
+
+.title {
+  font-family: var(--site-font-heading);
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--site-spacing-xs);
+  color: var(--ifm-heading-color);
+}
+
+.accent {
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: var(--ifm-color-primary);
+  border-radius: 2px;
+  margin: var(--site-spacing-sm) auto 0;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: var(--site-color-text-muted);
+  margin-top: var(--site-spacing-sm);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}

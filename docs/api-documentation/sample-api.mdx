@@ -1,0 +1,240 @@
+---
+sidebar_position: 1
+title: TaskFlow API Reference
+description: Complete REST API documentation for the TaskFlow task management service
+---
+
+# TaskFlow API Reference
+
+**Base URL**: `https://api.taskflow.example.com/v1`
+
+**Version**: 1.0.0
+
+TaskFlow is a task management API that enables teams to create, organize, and track work items across projects. This reference documents all available endpoints, request/response schemas, and error codes.
+
+## Authentication
+
+All API requests require authentication via Bearer token in the `Authorization` header.
+
+```
+Authorization: Bearer <your-api-token>
+```
+
+To obtain an API token, navigate to **Settings > API Tokens** in the TaskFlow dashboard and click **Generate New Token**.
+
+:::caution Token Security
+API tokens grant full access to your account. Store them securely using environment variables or a secrets manager. Never commit tokens to version control.
+:::
+
+## Rate Limiting
+
+| Plan       | Requests/minute | Burst limit |
+|------------|-----------------|-------------|
+| Free       | 60              | 10          |
+| Pro        | 300             | 50          |
+| Enterprise | 1000            | 200         |
+
+Rate limit status is returned in response headers:
+
+```
+X-RateLimit-Limit: 300
+X-RateLimit-Remaining: 297
+X-RateLimit-Reset: 1708300800
+```
+
+---
+
+## Tasks
+
+### List Tasks
+
+Retrieve a paginated list of tasks in a project.
+
+```
+GET /projects/{project_id}/tasks
+```
+
+**Path Parameters**
+
+| Parameter    | Type   | Required | Description              |
+|--------------|--------|----------|--------------------------|
+| `project_id` | string | Yes      | The unique project identifier |
+
+**Query Parameters**
+
+| Parameter | Type    | Default | Description                                    |
+|-----------|---------|---------|------------------------------------------------|
+| `status`  | string  | `all`   | Filter by status: `open`, `in_progress`, `done`, `all` |
+| `assignee`| string  | —       | Filter by assignee user ID                     |
+| `page`    | integer | `1`     | Page number for pagination                     |
+| `limit`   | integer | `20`    | Items per page (max: 100)                      |
+| `sort`    | string  | `created_at` | Sort field: `created_at`, `updated_at`, `priority` |
+| `order`   | string  | `desc`  | Sort order: `asc` or `desc`                    |
+
+**Response** `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": "task_abc123",
+      "title": "Implement user authentication",
+      "description": "Add JWT-based authentication to the API gateway",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": {
+        "id": "user_xyz789",
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      },
+      "project_id": "proj_def456",
+      "tags": ["backend", "security"],
+      "created_at": "2026-01-15T09:30:00Z",
+      "updated_at": "2026-02-10T14:22:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 47,
+    "total_pages": 3
+  }
+}
+```
+
+### Create Task
+
+Create a new task in a project.
+
+```
+POST /projects/{project_id}/tasks
+```
+
+**Request Body**
+
+```json
+{
+  "title": "Update deployment documentation",
+  "description": "Revise the deployment guide to include Kubernetes instructions",
+  "priority": "medium",
+  "assignee_id": "user_xyz789",
+  "tags": ["docs", "devops"],
+  "due_date": "2026-03-01T00:00:00Z"
+}
+```
+
+| Field         | Type     | Required | Description                          |
+|---------------|----------|----------|--------------------------------------|
+| `title`       | string   | Yes      | Task title (max 200 characters)      |
+| `description` | string   | No       | Detailed task description (Markdown) |
+| `priority`    | string   | No       | `low`, `medium`, `high`, `critical`. Default: `medium` |
+| `assignee_id` | string   | No       | User ID to assign the task to        |
+| `tags`        | string[] | No       | Array of tag labels                  |
+| `due_date`    | string   | No       | ISO 8601 datetime                    |
+
+**Response** `201 Created`
+
+```json
+{
+  "data": {
+    "id": "task_new001",
+    "title": "Update deployment documentation",
+    "description": "Revise the deployment guide to include Kubernetes instructions",
+    "status": "open",
+    "priority": "medium",
+    "assignee": {
+      "id": "user_xyz789",
+      "name": "Jane Smith",
+      "email": "jane@example.com"
+    },
+    "project_id": "proj_def456",
+    "tags": ["docs", "devops"],
+    "due_date": "2026-03-01T00:00:00Z",
+    "created_at": "2026-02-21T10:00:00Z",
+    "updated_at": "2026-02-21T10:00:00Z"
+  }
+}
+```
+
+### Update Task
+
+Update an existing task's fields.
+
+```
+PATCH /projects/{project_id}/tasks/{task_id}
+```
+
+Only include fields you want to update. Omitted fields remain unchanged.
+
+**Request Body**
+
+```json
+{
+  "status": "done",
+  "priority": "high"
+}
+```
+
+**Response** `200 OK` — Returns the full updated task object.
+
+### Delete Task
+
+Permanently delete a task.
+
+```
+DELETE /projects/{project_id}/tasks/{task_id}
+```
+
+**Response** `204 No Content`
+
+:::warning Irreversible Action
+Deleted tasks cannot be recovered. Consider changing the status to `archived` instead if you may need the task later.
+:::
+
+---
+
+## Error Handling
+
+All errors follow a consistent format:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The 'title' field is required",
+    "details": [
+      {
+        "field": "title",
+        "issue": "required",
+        "message": "Task title must be provided"
+      }
+    ]
+  }
+}
+```
+
+### Error Codes
+
+| HTTP Status | Error Code          | Description                                  |
+|-------------|---------------------|----------------------------------------------|
+| `400`       | `VALIDATION_ERROR`  | Request body failed validation               |
+| `401`       | `UNAUTHORIZED`      | Missing or invalid authentication token      |
+| `403`       | `FORBIDDEN`         | Authenticated but lacks required permissions  |
+| `404`       | `NOT_FOUND`         | Requested resource does not exist             |
+| `409`       | `CONFLICT`          | Resource state conflict (e.g., duplicate)     |
+| `429`       | `RATE_LIMITED`       | Too many requests — retry after cooldown      |
+| `500`       | `INTERNAL_ERROR`    | Unexpected server error — contact support     |
+
+---
+
+## SDKs and Tools
+
+| Language   | Package                          | Install                         |
+|------------|----------------------------------|---------------------------------|
+| JavaScript | `@taskflow/sdk`                 | `npm install @taskflow/sdk`     |
+| Python     | `taskflow-python`               | `pip install taskflow-python`   |
+| Go         | `github.com/taskflow/go-client` | `go get github.com/taskflow/go-client` |
+
+---
+
+*This API documentation was written as a portfolio sample to demonstrate REST API documentation skills. TaskFlow is a fictional service.*

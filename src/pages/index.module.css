@@ -1,0 +1,71 @@
+.main {
+  overflow-x: hidden;
+}
+
+.section {
+  padding: var(--site-spacing-section) 0;
+}
+
+.sectionAlt {
+  padding: var(--site-spacing-section) 0;
+  background: var(--site-color-surface);
+}
+
+.sectionInner {
+  max-width: var(--site-max-width);
+  margin: 0 auto;
+  padding: 0 var(--site-spacing-md);
+}
+
+.educationGrid {
+  display: grid;
+  gap: var(--site-spacing-md);
+}
+
+.educationCard {
+  background: var(--site-color-surface-raised);
+  border: 1px solid var(--site-color-border);
+  border-radius: var(--site-radius-lg);
+  padding: var(--site-spacing-md);
+  box-shadow: var(--site-shadow-sm);
+}
+
+.educationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--site-spacing-xs);
+  margin-bottom: var(--site-spacing-xs);
+}
+
+.educationDegree {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ifm-heading-color);
+  margin: 0;
+}
+
+.educationPeriod {
+  font-size: 0.9rem;
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.educationInstitution {
+  font-size: 1rem;
+  color: var(--site-color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.educationField {
+  font-size: 0.95rem;
+  color: var(--ifm-font-color-base);
+}
+
+.educationNotes {
+  font-size: 0.9rem;
+  color: var(--site-color-text-muted);
+  margin-top: var(--site-spacing-xs);
+  font-style: italic;
+}

@@ -1,0 +1,202 @@
+---
+sidebar_position: 1
+title: Getting Started with Aurora
+description: A step-by-step onboarding guide for new Aurora users
+---
+
+# Getting Started with Aurora
+
+This guide walks you through setting up Aurora, a cloud-based analytics platform, from installation to running your first data pipeline. By the end, you will have a working Aurora environment and a completed sample analysis.
+
+**Estimated time**: 20 minutes
+
+## Prerequisites
+
+Before you begin, ensure you have the following:
+
+| Requirement      | Minimum Version | Check Command         |
+|------------------|-----------------|-----------------------|
+| Node.js          | 18.0+           | `node --version`      |
+| npm              | 9.0+            | `npm --version`       |
+| Git              | 2.30+           | `git --version`       |
+| Aurora Account   | Free tier+      | [Sign up](https://aurora.example.com/signup) |
+
+:::info Operating System Support
+Aurora supports macOS 12+, Ubuntu 20.04+, and Windows 10+ (via WSL2). Native Windows support is in beta.
+:::
+
+## Step 1: Install the Aurora CLI
+
+The Aurora CLI is the primary tool for managing pipelines, data sources, and deployments.
+
+```bash
+npm install -g @aurora/cli
+```
+
+Verify the installation:
+
+```bash
+aurora --version
+# Expected output: aurora-cli v3.2.1
+```
+
+If you encounter permission errors on macOS or Linux, see [Troubleshooting: Permission Denied](#troubleshooting).
+
+## Step 2: Authenticate
+
+Connect the CLI to your Aurora account:
+
+```bash
+aurora auth login
+```
+
+This opens your default browser for OAuth authentication. After approving access, the CLI stores your credentials securely in your system keychain.
+
+**Verify authentication:**
+
+```bash
+aurora auth status
+```
+
+```
+Authenticated as: jane@example.com
+Organization: Acme Corp
+Plan: Pro
+Token expires: 2026-08-21T00:00:00Z
+```
+
+## Step 3: Create Your First Project
+
+Aurora organizes work into **projects**. Each project contains data sources, pipelines, and dashboards.
+
+```bash
+aurora project create my-first-project
+cd my-first-project
+```
+
+This generates the following structure:
+
+```
+my-first-project/
+├── aurora.config.yaml    # Project configuration
+├── pipelines/            # Data pipeline definitions
+│   └── example.yaml      # Sample pipeline
+├── sources/              # Data source configurations
+└── outputs/              # Pipeline output schemas
+```
+
+## Step 4: Configure a Data Source
+
+Open `sources/sample-data.yaml` and define a data source:
+
+```yaml
+# sources/sample-data.yaml
+name: sample-csv
+type: file
+format: csv
+path: ./data/sample.csv
+schema:
+  columns:
+    - name: id
+      type: integer
+      primary_key: true
+    - name: timestamp
+      type: datetime
+    - name: value
+      type: float
+    - name: category
+      type: string
+```
+
+Download the sample dataset:
+
+```bash
+aurora data fetch-sample --output ./data/sample.csv
+```
+
+## Step 5: Run the Sample Pipeline
+
+Execute the pre-configured example pipeline:
+
+```bash
+aurora pipeline run example
+```
+
+```
+[1/4] Loading data source: sample-csv .......... OK
+[2/4] Validating schema ........................ OK
+[3/4] Running transformations .................. OK
+[4/4] Writing output ........................... OK
+
+Pipeline completed successfully.
+Results: ./outputs/example-results.json
+Duration: 3.2s | Rows processed: 10,000
+```
+
+## Step 6: View Results
+
+Open the results dashboard in your browser:
+
+```bash
+aurora dashboard open
+```
+
+Or inspect the raw output:
+
+```bash
+aurora output view example-results --format table
+```
+
+```
+┌─────┬─────────────┬──────────┬──────────┐
+│ ID  │ Category    │ Avg Val  │ Count    │
+├─────┼─────────────┼──────────┼──────────┤
+│ 1   │ Electronics │ 245.50   │ 3,412    │
+│ 2   │ Clothing    │ 67.30    │ 2,891    │
+│ 3   │ Food        │ 12.80    │ 3,697    │
+└─────┴─────────────┴──────────┴──────────┘
+```
+
+## Next Steps
+
+Now that your environment is set up, explore these resources:
+
+- **[Pipeline Configuration Reference](/docs/api-documentation/sample-api)** — Learn advanced pipeline syntax
+- **[Data Source Types](/docs/technical-guides/deployment-guide)** — Connect databases, APIs, and cloud storage
+- **[Scheduling Pipelines](#)** — Automate recurring analysis jobs
+
+## Troubleshooting
+
+### Permission Denied on Install
+
+If `npm install -g` fails with `EACCES`, configure npm to use a different directory:
+
+```bash
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Authentication Fails
+
+If the browser-based login doesn't work, use token-based authentication:
+
+```bash
+aurora auth login --method token
+# Paste your API token when prompted
+```
+
+Generate an API token at **Settings > API Tokens** in the Aurora dashboard.
+
+### Pipeline Fails with Schema Error
+
+Ensure your data source schema matches the actual data format. Run validation separately:
+
+```bash
+aurora data validate sources/sample-data.yaml
+```
+
+---
+
+*This getting-started guide was written as a portfolio sample to demonstrate onboarding documentation skills. Aurora is a fictional platform.*
