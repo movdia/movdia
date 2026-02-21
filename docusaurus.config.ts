@@ -54,9 +54,20 @@ const config: Config = {
     {
       tagName: 'link',
       attributes: {
-        rel: 'stylesheet',
+        rel: 'preload',
         href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap',
+        as: 'style',
       },
+    },
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap';document.head.appendChild(l)})();`,
+    },
+    {
+      tagName: 'noscript',
+      attributes: {},
+      innerHTML: '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">',
     },
   ],
 

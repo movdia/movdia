@@ -42,7 +42,7 @@
 .greeting {
   font-size: 1.15rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.95);
   margin-bottom: var(--site-spacing-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -67,7 +67,7 @@
 
 .tagline {
   font-size: 1.15rem;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.9);
   max-width: 550px;
   margin: 0 auto var(--site-spacing-md);
   line-height: 1.6;
