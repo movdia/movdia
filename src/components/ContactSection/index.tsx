@@ -44,6 +44,16 @@ export default function ContactSection({
           },
         ]
       : []),
+    ...(contact.telegram
+      ? [
+          {
+            label: 'Telegram',
+            value: '@didrux',
+            href: contact.telegram,
+            icon: 'tg',
+          },
+        ]
+      : []),
     {
       label: 'Location',
       value: contact.location,

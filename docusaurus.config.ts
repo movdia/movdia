@@ -127,7 +127,7 @@ const config: Config = {
           title: 'Connect',
           items: [
             {label: 'GitHub', href: 'https://github.com/movdia'},
-            {label: 'LinkedIn', href: 'https://linkedin.com/in/placeholder'},
+            {label: 'LinkedIn', href: 'https://linkedin.com/in/mykhailo-ovdiienko'},
           ],
         },
       ],
