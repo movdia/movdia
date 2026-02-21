@@ -98,13 +98,13 @@
 
 .primaryBtn {
   background: #ffffff;
-  color: var(--ifm-color-primary-darkest);
+  color: #075862;
 }
 
 .primaryBtn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-  color: var(--ifm-color-primary-darkest);
+  color: #075862;
   text-decoration: none;
 }
 
