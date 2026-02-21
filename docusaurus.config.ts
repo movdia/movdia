@@ -6,7 +6,7 @@ import securityHeadersPlugin from './src/plugins/security-headers';
 const config: Config = {
   title: 'Mykhailo Ovdiienko',
   tagline: 'Technical Writer',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
 
   future: {
     v4: true,
@@ -77,7 +77,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/social-card.jpg',
+    image: 'img/social-card.png',
     metadata: [
       {name: 'keywords', content: 'technical writer, documentation, portfolio, Mykhailo Ovdiienko'},
       {name: 'author', content: 'Mykhailo Ovdiienko'},
@@ -89,6 +89,12 @@ const config: Config = {
     },
     navbar: {
       title: 'Mykhailo Ovdiienko',
+      logo: {
+        alt: 'MO',
+        src: 'img/logo.svg',
+        width: 28,
+        height: 28,
+      },
       hideOnScroll: true,
       items: [
         {to: '/', label: 'Home', position: 'left', activeBaseRegex: '^/$'},
